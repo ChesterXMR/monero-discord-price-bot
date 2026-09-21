@@ -11,9 +11,10 @@ Two deployable flavours live in this repo:
 | `worker/` | Cloudflare Worker fired by a cron trigger    | every 15 s (configurable) | nickname only              | Cloudflare Workers free plan (no card, no VM)   |
 | `bot/`    | Always-on Node.js bot (discord.js)           | 10-30 s       | nickname + status line (`▲ 2.77% today · H 633.90 L 519.17`) | Any free VM: Oracle Always Free, Google e2-micro |
 
-**Recommendation:** start with the Worker. It is the only free option that needs no server to
-keep alive and cannot be reclaimed for being idle. Move to the VM bot only if you want
-the status line. Details in [Hosting](#hosting).
+**Which one:** the VM bot is the full experience (bot shows online, with a status line). The
+Worker is the zero-maintenance fallback: it needs no server, but the bot appears offline in the
+member list because it never holds a gateway connection. Run one or the other, not both; the
+Worker's cron is disabled in `wrangler.toml` by default. Details in [Hosting](#hosting).
 
 > Do not automate a normal Discord *user* account for this. Self-bots are against Discord's
 > Terms of Service and get accounts banned. A bot account is the supported way.

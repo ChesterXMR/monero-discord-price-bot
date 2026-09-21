@@ -2,10 +2,11 @@ name = "monero-price-worker"
 main = "src/index.js"
 compatibility_date = "2025-01-01"
 
-# Fires once a minute (Cloudflare's floor); each run then loops for ~55 s,
-# updating every UPDATE_INTERVAL seconds.
+# Schedule is OFF because the always-on bot in ../bot runs on a VM and owns the
+# nickname. To use the Worker instead, set:  crons = ["* * * * *"]
+# (fires once a minute; each run then loops for ~55 s, updating every UPDATE_INTERVAL seconds).
 [triggers]
-crons = ["* * * * *"]
+crons = []
 
 [vars]
 # Optional. Leave empty to update every server the bot has been added to.

@@ -95,7 +95,7 @@ function updatePresence() {
   });
 }
 
-client.once("ready", async () => {
+client.once("clientReady", async () => {
   console.log(`Logged in as ${client.user.tag} in ${client.guilds.cache.size} guild(s); pair ${PAIR}`);
   console.log(`Invite: https://discord.com/oauth2/authorize?client_id=${client.user.id}&scope=bot&permissions=67108864`);
   await updateNicknames();
