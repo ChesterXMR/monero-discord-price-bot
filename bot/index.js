@@ -16,10 +16,13 @@ const symbol = QUOTE_SYMBOL[quote] ?? `${quote} `;
 
 /** Fetch the Kraken ticker for PAIR. Returns { last, open, high, low, changePct }. */
 const KRAKEN = "https://api.kraken.com/0/public";
-const FETCH_OPTS = { headers: { "User-Agent": "monero-discord-price-bot" }, signal: AbortSignal.timeout(10_000) };
 
 async function kraken(path) {
-  const res = await fetch(`${KRAKEN}/${path}`, FETCH_OPTS);
+  // A fresh timeout signal per request: AbortSignal.timeout() fires once, so it must not be shared.
+  const res = await fetch(`${KRAKEN}/${path}`, {
+    headers: { "User-Agent": "monero-discord-price-bot" },
+    signal: AbortSignal.timeout(10_000),
+  });
   if (!res.ok) throw new Error(`Kraken HTTP ${res.status}`);
   const body = await res.json();
   if (body.error?.length) throw new Error(`Kraken: ${body.error.join(", ")}`);
