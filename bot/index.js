@@ -42,8 +42,7 @@ function fmt(n) {
 
 function nickname(p) {
   const arrow = p.changePct >= 0 ? "▲" : "▼";
-  const whole = Math.round(p.last).toLocaleString("en-US");
-  return `${symbol}${whole} (${arrow}${Math.abs(p.changePct).toFixed(1)}%)`.slice(0, 32); // Discord nickname limit
+  return `${symbol}${fmt(p.last)} (${arrow}${Math.abs(p.changePct).toFixed(1)}%)`.slice(0, 32); // Discord nickname limit
 }
 
 function presenceText(p) {
