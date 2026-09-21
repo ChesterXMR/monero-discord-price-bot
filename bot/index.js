@@ -41,8 +41,7 @@ function fmt(n) {
 }
 
 function nickname(p) {
-  const arrow = p.changePct >= 0 ? "▲" : "▼";
-  return `[XMR] ${fmt(p.last)} ${arrow}`.slice(0, 32); // Discord nickname limit
+  return `XMR ${symbol}${fmt(p.last)}`.slice(0, 32); // Discord nickname limit
 }
 
 function presenceText(p) {
