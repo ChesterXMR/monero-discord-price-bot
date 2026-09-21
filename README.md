@@ -1,7 +1,7 @@
 # Monero Discord price bot
 
 A Discord bot whose **server nickname is the live XMR price** (for example `XMR $580.44`),
-with an optional status line showing today's change and high/low.
+with a status line showing the rolling 24-hour high and low. Change vs 24 hours ago is in the name.
 Price comes from Kraken's public ticker (no API key needed).
 
 Two deployable flavours live in this repo:
@@ -9,7 +9,7 @@ Two deployable flavours live in this repo:
 | Folder    | What it is                                   | Refresh       | Shows                                  | Runs on                                         |
 |-----------|----------------------------------------------|---------------|----------------------------------------|-------------------------------------------------|
 | `worker/` | Cloudflare Worker fired by a cron trigger    | every 15 s (configurable) | nickname only              | Cloudflare Workers free plan (no card, no VM)   |
-| `bot/`    | Always-on Node.js bot (discord.js)           | 10-30 s       | nickname + status line (`▲ 2.77% today · H 633.90 L 519.17`) | Any free VM: Oracle Always Free, Google e2-micro |
+| `bot/`    | Always-on Node.js bot (discord.js)           | 10-30 s       | nickname `$575.00 (▲10.0%)` + status `HIGH: $633.90 ▌LOW: $519.17` | Any free VM: Oracle Always Free, Google e2-micro |
 
 **Which one:** the VM bot is the full experience (bot shows online, with a status line). The
 Worker is the zero-maintenance fallback: it needs no server, but the bot appears offline in the
@@ -105,7 +105,7 @@ Behaviour:
 
 - Nickname is written every `NICK_INTERVAL` seconds (default 30) in every server the bot is in,
   and skipped when the text hasn't changed so no rate-limit budget is wasted.
-- Status line ("Watching ▲ 2.77% today · H 633.90 L 519.17") refreshes every
+- Status line (`HIGH: $633.90 ▌LOW: $519.17`, rolling 24h) refreshes every
   `PRESENCE_INTERVAL` seconds (default 15). The bot shows green (online) when up on the day
   and red (do not disturb) when down.
 - discord.js queues and retries automatically on Discord 429s; a `rate limited` warning in the
