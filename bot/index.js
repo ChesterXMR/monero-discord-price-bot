@@ -41,12 +41,12 @@ function fmt(n) {
 }
 
 function nickname(p) {
-  return `XMR ${symbol}${fmt(p.last)}`.slice(0, 32); // Discord nickname limit
+  const sign = p.changePct >= 0 ? "+" : "";
+  return `1 XMR = ${symbol}${fmt(p.last)} (${sign}${p.changePct.toFixed(1)}%)`.slice(0, 32); // Discord nickname limit
 }
 
 function presenceText(p) {
-  const arrow = p.changePct >= 0 ? "▲" : "▼";
-  return `${arrow} ${p.changePct.toFixed(2)}% today · H ${fmt(p.high)} L ${fmt(p.low)}`.slice(0, 128);
+  return `HIGH: ${fmt(p.high)} | LOW: ${fmt(p.low)}`.slice(0, 128);
 }
 
 const client = new Client({ intents: [GatewayIntentBits.Guilds] });
@@ -91,7 +91,7 @@ function updatePresence() {
   if (!latest || !client.user) return;
   client.user.setPresence({
     status: latest.changePct >= 0 ? "online" : "dnd",
-    activities: [{ name: presenceText(latest), type: ActivityType.Watching }],
+    activities: [{ name: "status", state: presenceText(latest), type: ActivityType.Custom }],
   });
 }
 

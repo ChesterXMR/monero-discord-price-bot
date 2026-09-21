@@ -26,7 +26,8 @@ function fmt(n) {
 function nickname(pair, p) {
   const quote = pair.replace(/^XMR/, "");
   const symbol = QUOTE_SYMBOL[quote] ?? `${quote} `;
-  return `XMR ${symbol}${fmt(p.last)}`.slice(0, 32);
+  const sign = p.changePct >= 0 ? "+" : "";
+  return `1 XMR = ${symbol}${fmt(p.last)} (${sign}${p.changePct.toFixed(1)}%)`.slice(0, 32);
 }
 
 async function setNickname(env, guildId, nick) {
