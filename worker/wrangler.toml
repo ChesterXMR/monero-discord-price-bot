@@ -1,0 +1,19 @@
+name = "monero-price-worker"
+main = "src/index.js"
+compatibility_date = "2025-01-01"
+
+# Fires once a minute (Cloudflare's floor); each run then loops for ~55 s,
+# updating every UPDATE_INTERVAL seconds.
+[triggers]
+crons = ["* * * * *"]
+
+[vars]
+# Comma-separated Discord server (guild) IDs the bot has joined.
+GUILD_IDS = "123456789012345678"
+# Kraken pair: XMRUSD, XMREUR, XMRXBT ...
+PAIR = "XMRUSD"
+# Seconds between nickname updates inside each one-minute run. 15 is a safe
+# default; below ~10 Discord starts rate limiting the nickname route.
+UPDATE_INTERVAL = "15"
+
+# DISCORD_TOKEN is a secret, not a var:  npx wrangler secret put DISCORD_TOKEN
