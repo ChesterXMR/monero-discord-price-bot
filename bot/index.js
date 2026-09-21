@@ -15,23 +15,36 @@ const quote = PAIR.replace(/^XMR/, "");
 const symbol = QUOTE_SYMBOL[quote] ?? `${quote} `;
 
 /** Fetch the Kraken ticker for PAIR. Returns { last, open, high, low, changePct }. */
-async function fetchPrice() {
-  const res = await fetch(`https://api.kraken.com/0/public/Ticker?pair=${PAIR}`, {
-    headers: { "User-Agent": "monero-discord-price-bot" },
-    signal: AbortSignal.timeout(10_000),
-  });
+const KRAKEN = "https://api.kraken.com/0/public";
+const FETCH_OPTS = { headers: { "User-Agent": "monero-discord-price-bot" }, signal: AbortSignal.timeout(10_000) };
+
+async function kraken(path) {
+  const res = await fetch(`${KRAKEN}/${path}`, FETCH_OPTS);
   if (!res.ok) throw new Error(`Kraken HTTP ${res.status}`);
   const body = await res.json();
   if (body.error?.length) throw new Error(`Kraken: ${body.error.join(", ")}`);
-  const t = Object.values(body.result)[0];
+  return body.result;
+}
+
+/** Price 24 hours ago: the open of the first 5-minute candle at or after now-24h. */
+async function priceDayAgo() {
+  const since = Math.floor(Date.now() / 1000) - 24 * 3600 - 300;
+  const result = await kraken(`OHLC?pair=${PAIR}&interval=5&since=${since}`);
+  const candles = Object.values(result).find(Array.isArray);
+  if (!candles?.length) throw new Error("Kraken: no OHLC data");
+  return Number(candles[0][1]);
+}
+
+/** Rolling 24h figures: last price, 24h high/low, and change vs the price 24h ago. */
+async function fetchPrice() {
+  const [ticker, dayAgo] = await Promise.all([kraken(`Ticker?pair=${PAIR}`), priceDayAgo()]);
+  const t = Object.values(ticker)[0];
   const last = Number(t.c[0]);
-  const open = Number(t.o);
   return {
     last,
-    open,
-    high: Number(t.h[0]),
-    low: Number(t.l[0]),
-    changePct: ((last - open) / open) * 100,
+    high: Number(t.h[1]),
+    low: Number(t.l[1]),
+    changePct: ((last - dayAgo) / dayAgo) * 100,
   };
 }
 
