@@ -47,7 +47,7 @@ function nickname(p) {
 }
 
 function presenceText(p) {
-  return `HIGH · ${fmt(p.high)} █ LOW · ${fmt(p.low)}`.slice(0, 128);
+  return `HIGH: ${fmt(p.high)} ▌ LOW: ${fmt(p.low)}`.slice(0, 128);
 }
 
 const client = new Client({ intents: [GatewayIntentBits.Guilds] });
