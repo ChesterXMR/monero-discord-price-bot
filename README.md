@@ -110,16 +110,23 @@ Behaviour:
 - discord.js queues and retries automatically on Discord 429s; a `rate limited` warning in the
   log means `NICK_INTERVAL` is too low. 10 s is about the practical floor.
 
-### Run it as a service on Linux
+### Run it on a Linux VM (one command)
+
+On a fresh Debian or Ubuntu VM, run:
 
 ```bash
-sudo apt install -y nodejs npm git      # or install Node 22 from nodesource
-git clone https://github.com/<you>/monero-discord-price-bot ~/monero-discord-price-bot
-cd ~/monero-discord-price-bot/bot && cp .env.example .env && nano .env && npm install
-sudo cp monero-price-bot.service /etc/systemd/system/   # edit User= / paths first
-sudo systemctl daemon-reload
-sudo systemctl enable --now monero-price-bot
-journalctl -u monero-price-bot -f
+curl -fsSL https://raw.githubusercontent.com/ChesterXMR/monero-discord-price-bot/main/bot/setup-vm.sh | bash
+```
+
+It installs Node 22, clones this repo, asks for the bot token once, and installs two systemd
+units: the bot itself (starts on boot, restarts on crash) and a timer that checks GitHub every
+5 minutes and restarts the bot whenever `main` changes. Pushing to GitHub is all it takes to
+update a running VM.
+
+```bash
+journalctl -u monero-price-bot -f          # bot log
+journalctl -u monero-price-bot-update      # auto-update log
+sudo systemctl restart monero-price-bot    # manual restart
 ```
 
 A `Dockerfile` is included if you prefer containers (`docker build -t xmr-bot . && docker run -d --env-file .env --restart unless-stopped xmr-bot`).
