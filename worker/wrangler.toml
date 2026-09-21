@@ -8,8 +8,9 @@ compatibility_date = "2025-01-01"
 crons = ["* * * * *"]
 
 [vars]
-# Comma-separated Discord server (guild) IDs the bot has joined.
-GUILD_IDS = "123456789012345678"
+# Optional. Leave empty to update every server the bot has been added to.
+# Set comma-separated server IDs to restrict it to specific servers.
+GUILD_IDS = ""
 # Kraken pair: XMRUSD, XMREUR, XMRXBT ...
 PAIR = "XMRUSD"
 # Seconds between nickname updates inside each one-minute run. 15 is a safe

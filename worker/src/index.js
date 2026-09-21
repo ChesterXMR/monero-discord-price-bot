@@ -30,10 +30,10 @@ function nickname(pair, p) {
 }
 
 async function setNickname(env, guildId, nick) {
-  const res = await fetch(`https://discord.com/api/v10/guilds/${guildId}/members/@me`, {
+  const res = await fetch(`${DISCORD_API}/guilds/${guildId}/members/@me`, {
     method: "PATCH",
     headers: {
-      Authorization: `Bot ${env.DISCORD_TOKEN}`,
+      ...authHeaders(env),
       "Content-Type": "application/json",
       "X-Audit-Log-Reason": "XMR price update",
     },
@@ -46,17 +46,48 @@ async function setNickname(env, guildId, nick) {
   if (!res.ok) throw new Error(`Discord HTTP ${res.status}: ${await res.text()}`);
 }
 
+const DISCORD_API = "https://discord.com/api/v10";
+
+function authHeaders(env) {
+  return { Authorization: `Bot ${env.DISCORD_TOKEN}` };
+}
+
+/**
+ * Every server the bot has been added to. Uses the bot token's own guild list,
+ * so nobody has to configure server IDs: adding the bot via the invite link is
+ * enough. GUILD_IDS can still be set to restrict it to specific servers.
+ */
+async function listGuilds(env) {
+  const configured = String(env.GUILD_IDS || "").split(",").map((s) => s.trim()).filter(Boolean);
+  if (configured.length) return configured;
+  const ids = [];
+  let after = "0";
+  for (;;) {
+    const res = await fetch(`${DISCORD_API}/users/@me/guilds?limit=200&after=${after}`, {
+      headers: authHeaders(env),
+    });
+    if (!res.ok) throw new Error(`Discord guild list HTTP ${res.status}: ${await res.text()}`);
+    const page = await res.json();
+    ids.push(...page.map((g) => g.id));
+    if (page.length < 200) break;
+    after = page[page.length - 1].id;
+  }
+  return ids;
+}
+
 function settings(env) {
-  const pair = (env.PAIR || "XMRUSD").toUpperCase();
-  const guilds = String(env.GUILD_IDS || "").split(",").map((s) => s.trim()).filter(Boolean);
   if (!env.DISCORD_TOKEN) throw new Error("DISCORD_TOKEN secret is not set");
-  if (guilds.length === 0) throw new Error("GUILD_IDS is empty");
-  return { pair, guilds };
+  return { pair: (env.PAIR || "XMRUSD").toUpperCase() };
 }
 
 /** One update: fetch the price and write the nickname to every guild. */
-export async function run(env, lastNick = "") {
-  const { pair, guilds } = settings(env);
+export async function run(env, lastNick = "", guilds = null) {
+  const { pair } = settings(env);
+  guilds ??= await listGuilds(env);
+  if (guilds.length === 0) {
+    console.log("bot is not in any server yet");
+    return { nick: null, price: null, report: [] };
+  }
   const price = await fetchPrice(pair);
   const nick = nickname(pair, price);
   if (nick === lastNick) {
@@ -83,9 +114,11 @@ async function runLoop(env) {
   const budget = 55_000; // stop before the next cron fires so runs never overlap
   const started = Date.now();
   let lastNick = "";
+  let guilds = null; // fetched once per minute; new servers are picked up on the next cron run
   for (let i = 0; ; i++) {
     try {
-      const out = await run(env, lastNick);
+      guilds ??= await listGuilds(env);
+      const out = await run(env, lastNick, guilds);
       if (out.report.some((r) => r.endsWith(": ok"))) lastNick = out.nick;
     } catch (err) {
       console.error(`update ${i + 1} failed: ${err.message}`);
@@ -107,7 +140,7 @@ export default {
   async fetch(_request, env) {
     try {
       const out = await run(env);
-      return Response.json(out);
+      return Response.json({ ...out, guilds: out.report.length });
     } catch (err) {
       return Response.json({ error: err.message }, { status: 500 });
     }
