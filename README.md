@@ -31,7 +31,9 @@ the status line. Details in [Hosting](#hosting).
    - Or just use this URL with your Application ID:
      `https://discord.com/oauth2/authorize?client_id=YOUR_APP_ID&scope=bot&permissions=67108864`
 5. Open the URL, pick your server, authorise.
-6. Get your **server ID**: Discord settings → Advanced → Developer Mode on, then right-click the server icon → **Copy Server ID**. (Only the Worker needs this; the Node bot discovers its servers itself.)
+6. Under **Bot**, make sure **Public Bot** is on (it is by default). That lets anyone with the invite
+   URL add the bot to their own server; you don't need to be a member or know the server ID.
+   Both the Worker and the Node bot discover their servers automatically through Discord's API.
 
 Note: the bot's *username* can only change twice per hour, so the price goes in its
 per-server **nickname**, which is what everyone sees in the member list and in chat.
@@ -46,7 +48,6 @@ Requires a free Cloudflare account and Node.js on your PC for the one-time deplo
 cd worker
 npm install
 npx wrangler login                     # opens a browser to authorise
-# edit wrangler.toml: set GUILD_IDS to your server ID(s), comma-separated
 npx wrangler secret put DISCORD_TOKEN  # paste the bot token when prompted
 npx wrangler deploy
 ```
@@ -63,6 +64,13 @@ about 55 seconds, updating the nickname every `UPDATE_INTERVAL` seconds (default
 between updates uses no CPU time, so this stays well inside the free plan. To check it, open the
 `https://monero-price-worker.<your-subdomain>.workers.dev` URL the deploy prints: it performs an
 update and returns JSON with the nickname it set and any per-server error.
+
+### Letting other people add the bot
+
+Share the invite URL from step 4 above. Whoever has *Manage Server* on a Discord server can open
+it, pick their server, and authorise. The Worker picks the new server up on its next one-minute
+run. No configuration change and no redeploy needed. To limit the bot to specific servers
+instead, set `GUILD_IDS` in `wrangler.toml` to a comma-separated list of server IDs.
 
 Local test before deploying:
 
@@ -141,7 +149,7 @@ the two don't fight over the nickname.
 |---|---|---|---|
 | `DISCORD_TOKEN` | both (secret) | required | Bot token |
 | `PAIR` | both | `XMRUSD` | Any Kraken XMR pair: `XMRUSD`, `XMREUR`, `XMRXBT` |
-| `GUILD_IDS` | worker | required | Comma-separated server IDs |
+| `GUILD_IDS` | worker | empty | Optional. Comma-separated server IDs to restrict the bot to; empty means every server it has been added to |
 | `UPDATE_INTERVAL` | worker | `15` | Seconds between updates inside each one-minute cron run (min 5) |
 | `NICK_INTERVAL` | bot | `30` | Seconds between nickname writes (min 5) |
 | `PRESENCE_INTERVAL` | bot | `15` | Seconds between status-line updates (min 5) |
