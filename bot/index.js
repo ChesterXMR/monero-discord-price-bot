@@ -129,7 +129,7 @@ const commands = [
     .setDescription("XMR candlestick chart")
     .addStringOption((o) =>
       o.setName("timeframe")
-        .setDescription("Candle size (default: 1d)")
+        .setDescription("Candle size (default: 15-minute candles, last 24 hours)")
         .addChoices(...Object.entries(TIMEFRAMES).map(([value, tf]) => ({ name: tf.label, value }))),
     ),
 ];
@@ -156,7 +156,7 @@ async function handlePrice(interaction) {
 }
 
 async function handleChart(interaction) {
-  const tf = interaction.options.getString("timeframe") ?? "1d";
+  const tf = interaction.options.getString("timeframe") ?? "15m";
   const spec = TIMEFRAMES[tf];
   await interaction.deferReply();
   const candles = await fetchCandles(PAIR, tf, kraken);

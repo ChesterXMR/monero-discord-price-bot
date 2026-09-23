@@ -115,8 +115,8 @@ Behaviour:
 
 - `/price` replies with an embed: current price, change vs 24 hours ago, 24h high, low and volume.
 - `/chart [timeframe]` posts a candlestick chart drawn on the VM from Kraken OHLC data. Default is
-  daily candles over the last 6 months; options are `1H` (7 days), `4H` (30 days), `1D`, `1W`
-  (3 years) and `1M` (full history, aggregated from weekly candles).
+  15-minute candles over the last 24 hours; options are `15` (24h), `1H` (7 days), `4H` (30 days),
+  `1D` (6 months), `1W` (3 years) and `1M` (full history, aggregated from weekly candles).
 
 Servers that added the bot before slash commands existed need to re-run the invite link once so
 the `applications.commands` scope is granted. The bot does not need to be removed first.

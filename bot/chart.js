@@ -15,6 +15,7 @@ GlobalFonts.registerFromPath(path.join(here, "fonts", "DejaVuSans-Bold.ttf"), "D
  * because Kraken has no monthly interval.
  */
 export const TIMEFRAMES = {
+  "15m": { label: "15", kraken: 15, count: 96, tick: "hour" },    // 24 hours (default)
   "1h": { label: "1H", kraken: 60, count: 168, tick: "day" },      // 7 days
   "4h": { label: "4H", kraken: 240, count: 180, tick: "day" },     // 30 days
   "1d": { label: "1D", kraken: 1440, count: 180, tick: "month" },  // 6 months
@@ -104,10 +105,13 @@ function timeTicks(candles, mode) {
   let prev = null;
   candles.forEach((c, i) => {
     const d = new Date(c.t);
-    const key = mode === "day" ? d.getUTCDate() : mode === "month" ? d.getUTCMonth() : d.getUTCFullYear();
+    const key =
+      mode === "hour" ? Math.floor(d.getUTCHours() / 3) + d.getUTCDate() * 8 :
+      mode === "day" ? d.getUTCDate() : mode === "month" ? d.getUTCMonth() : d.getUTCFullYear();
     if (key !== prev) {
       if (prev !== null) {
         const label =
+          mode === "hour" ? (d.getUTCHours() === 0 ? `${d.getUTCDate()} ${MONTHS[d.getUTCMonth()]}` : `${String(d.getUTCHours()).padStart(2, "0")}:00`) :
           mode === "day" ? `${d.getUTCDate()} ${MONTHS[d.getUTCMonth()]}` :
           mode === "month" ? (d.getUTCMonth() === 0 ? String(d.getUTCFullYear()) : MONTHS[d.getUTCMonth()]) :
           String(d.getUTCFullYear());
