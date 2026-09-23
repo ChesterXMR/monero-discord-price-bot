@@ -43,9 +43,31 @@ export async function fetchCandles(pair, tf, kraken) {
     v: Number(r[6]),
   }));
   if (spec.monthly) candles = toMonthly(candles);
+  addEmas(candles, EMA_PERIODS);
   if (spec.count) candles = candles.slice(-spec.count);
   cache.set(tf, { at: Date.now(), candles });
   return candles;
+}
+
+export const EMA_PERIODS = [20, 50];
+
+/** Attach ema[period] to each candle, computed over the whole series (oldest first). */
+function addEmas(candles, periods) {
+  for (const period of periods) {
+    const k = 2 / (period + 1);
+    let ema = null;
+    candles.forEach((c, i) => {
+      if (i < period - 1) { c.ema ??= {}; c.ema[period] = null; return; }
+      if (ema === null) {
+        // Seed with the simple average of the first `period` closes.
+        ema = candles.slice(i - period + 1, i + 1).reduce((a, x) => a + x.c, 0) / period;
+      } else {
+        ema = c.c * k + ema * (1 - k);
+      }
+      c.ema ??= {};
+      c.ema[period] = ema;
+    });
+  }
 }
 
 /** Group weekly candles by the calendar month their week starts in. */
@@ -67,16 +89,17 @@ function toMonthly(weekly) {
 }
 
 const COLORS = {
-  bg: "#131722",
+  bg: "#000000",
   frame: "#2a9d3f",
-  grid: "#1f2733",
-  text: "#b2b5be",
-  dim: "#787b86",
-  up: "#26a69a",
-  down: "#ef5350",
-  upVol: "rgba(38,166,154,0.45)",
-  downVol: "rgba(239,83,80,0.45)",
+  grid: "#1e1e1e",
+  text: "#c9ccd3",
+  dim: "#8a8d96",
+  up: "#00e676",
+  down: "#ff3b3b",
+  upVol: "rgba(0,230,118,0.7)",
+  downVol: "rgba(255,59,59,0.7)",
   last: "#9598a1",
+  ema: { 20: "#f5a623", 50: "#2f80ed" },
 };
 
 function fmtPrice(n) {
@@ -90,7 +113,7 @@ function fmtVol(n) {
 }
 
 /** Choose a "nice" price step so the axis has ~6 gridlines. */
-function niceStep(range, target = 6) {
+function niceStep(range, target = 12) {
   const rough = range / target;
   const pow = 10 ** Math.floor(Math.log10(rough));
   for (const m of [1, 2, 2.5, 5, 10]) if (rough <= m * pow) return m * pow;
@@ -105,23 +128,28 @@ function timeTicks(candles, mode) {
   let prev = null;
   candles.forEach((c, i) => {
     const d = new Date(c.t);
+    // Boundary key per mode: hour -> every hour, day -> every day, month -> 1st and 15th,
+    // year -> January and July.
+    const half = mode === "month" ? (d.getUTCDate() >= 15 ? 1 : 0) : mode === "year" ? (d.getUTCMonth() >= 6 ? 1 : 0) : 0;
     const key =
-      mode === "hour" ? Math.floor(d.getUTCHours() / 3) + d.getUTCDate() * 8 :
-      mode === "day" ? d.getUTCDate() : mode === "month" ? d.getUTCMonth() : d.getUTCFullYear();
+      mode === "hour" ? d.getUTCHours() + d.getUTCDate() * 24 :
+      mode === "day" ? d.getUTCDate() + d.getUTCMonth() * 31 :
+      mode === "month" ? d.getUTCMonth() * 2 + half :
+      d.getUTCFullYear() * 2 + half;
     if (key !== prev) {
       if (prev !== null) {
         const label =
           mode === "hour" ? (d.getUTCHours() === 0 ? `${d.getUTCDate()} ${MONTHS[d.getUTCMonth()]}` : `${String(d.getUTCHours()).padStart(2, "0")}:00`) :
           mode === "day" ? `${d.getUTCDate()} ${MONTHS[d.getUTCMonth()]}` :
-          mode === "month" ? (d.getUTCMonth() === 0 ? String(d.getUTCFullYear()) : MONTHS[d.getUTCMonth()]) :
-          String(d.getUTCFullYear());
+          mode === "month" ? (half ? String(d.getUTCDate()) : d.getUTCMonth() === 0 ? String(d.getUTCFullYear()) : MONTHS[d.getUTCMonth()]) :
+          (half ? MONTHS[d.getUTCMonth()] : String(d.getUTCFullYear()));
         ticks.push({ i, label });
       }
       prev = key;
     }
   });
   // Thin out crowded axes.
-  const maxTicks = 10;
+  const maxTicks = 20;
   const every = Math.ceil(ticks.length / maxTicks);
   return ticks.filter((_, n) => n % every === 0);
 }
@@ -208,6 +236,22 @@ export function renderChart({ candles, title, exchange, tfLabel, mode }) {
     ctx.fillRect(x - bodyW / 2, bodyTop, bodyW, bodyH);
   }
 
+  // EMA lines
+  for (const period of EMA_PERIODS) {
+    ctx.strokeStyle = COLORS.ema[period];
+    ctx.lineWidth = 2.5;
+    ctx.lineJoin = "round";
+    ctx.beginPath();
+    let started = false;
+    for (let i = 0; i < n; i++) {
+      const v = candles[i].ema?.[period];
+      if (v == null) continue;
+      const x = xOf(i), y = yOf(v);
+      if (!started) { ctx.moveTo(x, y); started = true; } else ctx.lineTo(x, y);
+    }
+    ctx.stroke();
+  }
+
   // Last price line + tag
   const last = candles[n - 1];
   const yLast = yOf(last.c);
@@ -253,6 +297,14 @@ export function renderChart({ candles, title, exchange, tfLabel, mode }) {
   ctx.fillText("Volume", left, 78);
   ctx.fillStyle = chgColor;
   ctx.fillText(fmtVol(last.v), left + 84, 78);
+  let lx = left + 84 + ctx.measureText(fmtVol(last.v)).width + 28;
+  for (const period of EMA_PERIODS) {
+    const v = last.ema?.[period];
+    const text = `EMA ${period}`;
+    ctx.fillStyle = COLORS.dim; ctx.fillText(text, lx, 78); lx += ctx.measureText(text).width + 6;
+    const val = v == null ? "–" : fmtPrice(v);
+    ctx.fillStyle = COLORS.ema[period]; ctx.fillText(val, lx, 78); lx += ctx.measureText(val).width + 24;
+  }
 
   return canvas.toBuffer("image/png");
 }
