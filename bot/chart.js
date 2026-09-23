@@ -90,7 +90,7 @@ function toMonthly(weekly) {
 
 const COLORS = {
   bg: "#000000",
-  frame: "#2a9d3f",
+  frame: "#ff6600", // Monero orange
   grid: "#1e1e1e",
   text: "#c9ccd3",
   dim: "#8a8d96",
