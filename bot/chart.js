@@ -15,12 +15,12 @@ GlobalFonts.registerFromPath(path.join(here, "fonts", "DejaVuSans-Bold.ttf"), "D
  * because Kraken has no monthly interval.
  */
 export const TIMEFRAMES = {
-  "15m": { label: "15", kraken: 15, count: 96, tick: "hour" },    // 24 hours (default)
-  "1h": { label: "1H", kraken: 60, count: 168, tick: "day" },      // 7 days
-  "4h": { label: "4H", kraken: 240, count: 180, tick: "day" },     // 30 days
-  "1d": { label: "1D", kraken: 1440, count: 180, tick: "month" },  // 6 months
-  "1w": { label: "1W", kraken: 10080, count: 156, tick: "year" },  // 3 years
-  "1M": { label: "1M", kraken: 10080, count: 0, tick: "year", monthly: true }, // all history
+  "15m": { label: "15m", caption: "15-minute candles · last 24 hours", kraken: 15, count: 96, tick: "hour" },
+  "1h": { label: "1h", caption: "1-hour candles · last 7 days", kraken: 60, count: 168, tick: "day" },
+  "4h": { label: "4h", caption: "4-hour candles · last 30 days", kraken: 240, count: 180, tick: "day" },
+  "1d": { label: "1d", caption: "Daily candles · last 6 months", kraken: 1440, count: 180, tick: "month" },
+  "1w": { label: "1w", caption: "Weekly candles · last 3 years", kraken: 10080, count: 156, tick: "year" },
+  "1M": { label: "1M", caption: "Monthly candles · since 2016", kraken: 10080, count: 0, tick: "year", monthly: true },
 };
 
 const cache = new Map(); // timeframe -> { at, candles }
@@ -121,7 +121,7 @@ function timeTicks(candles, mode) {
     }
   });
   // Thin out crowded axes.
-  const maxTicks = 12;
+  const maxTicks = 10;
   const every = Math.ceil(ticks.length / maxTicks);
   return ticks.filter((_, n) => n % every === 0);
 }
@@ -143,13 +143,13 @@ export function renderChart({ candles, title, exchange, tfLabel, mode }) {
   ctx.fillRect(F, F, W - 2 * F, H - 2 * F);
 
   // Layout
-  const left = 24, right = W - 96, top = 78, bottom = H - 48;
+  const left = 28, right = W - 124, top = 100, bottom = H - 60;
   const volTop = bottom - 110;      // volume pane occupies the bottom 110 px
-  const priceBottom = volTop - 12;
+  const priceBottom = volTop - 14;
   const plotW = right - left;
   const n = candles.length;
   const slot = plotW / n;
-  const bodyW = Math.max(2, Math.floor(slot * 0.65));
+  const bodyW = Math.max(3, Math.floor(slot * 0.7));
 
   const min = Math.min(...candles.map((c) => c.l));
   const max = Math.max(...candles.map((c) => c.h));
@@ -160,7 +160,7 @@ export function renderChart({ candles, title, exchange, tfLabel, mode }) {
   const vMax = Math.max(...candles.map((c) => c.v)) || 1;
 
   // Horizontal grid + price labels
-  ctx.font = "13px DejaVu";
+  ctx.font = "19px DejaVu";
   ctx.textBaseline = "middle";
   const step = niceStep(pMax - pMin);
   for (let p = Math.ceil(pMin / step) * step; p <= pMax; p += step) {
@@ -170,7 +170,7 @@ export function renderChart({ candles, title, exchange, tfLabel, mode }) {
     ctx.beginPath(); ctx.moveTo(left, y); ctx.lineTo(right, y); ctx.stroke();
     ctx.fillStyle = COLORS.text;
     ctx.textAlign = "left";
-    ctx.fillText(fmtPrice(Math.abs(p) < step / 2 ? 0 : p), right + 10, y);
+    ctx.fillText(fmtPrice(Math.abs(p) < step / 2 ? 0 : p), right + 12, y);
   }
 
   // Vertical grid + time labels
@@ -181,7 +181,7 @@ export function renderChart({ candles, title, exchange, tfLabel, mode }) {
     ctx.strokeStyle = COLORS.grid;
     ctx.beginPath(); ctx.moveTo(x, top); ctx.lineTo(x, bottom); ctx.stroke();
     ctx.fillStyle = COLORS.text;
-    ctx.fillText(label, x, bottom + 18);
+    ctx.fillText(label, x, bottom + 26);
   }
 
   // Volume bars
@@ -200,7 +200,7 @@ export function renderChart({ candles, title, exchange, tfLabel, mode }) {
     const x = xOf(i);
     ctx.strokeStyle = color;
     ctx.fillStyle = color;
-    ctx.lineWidth = Math.max(1, Math.floor(slot * 0.12));
+    ctx.lineWidth = Math.max(2, Math.floor(slot * 0.15));
     ctx.beginPath(); ctx.moveTo(x, yOf(c.h)); ctx.lineTo(x, yOf(c.l)); ctx.stroke();
     const yO = yOf(c.o), yC = yOf(c.c);
     const bodyTop = Math.min(yO, yC);
@@ -217,42 +217,42 @@ export function renderChart({ candles, title, exchange, tfLabel, mode }) {
   ctx.beginPath(); ctx.moveTo(left, yLast); ctx.lineTo(right, yLast); ctx.stroke();
   ctx.setLineDash([]);
   const tag = fmtPrice(last.c);
-  ctx.font = "bold 13px DejaVu Bold";
-  const tagW = ctx.measureText(tag).width + 14;
+  ctx.font = "bold 19px DejaVu Bold";
+  const tagW = ctx.measureText(tag).width + 16;
   ctx.fillStyle = last.c >= last.o ? COLORS.up : COLORS.down;
-  ctx.fillRect(right + 4, yLast - 11, tagW, 22);
+  ctx.fillRect(right + 4, yLast - 15, tagW, 30);
   ctx.fillStyle = "#ffffff";
   ctx.textAlign = "left";
-  ctx.fillText(tag, right + 11, yLast);
+  ctx.fillText(tag, right + 12, yLast);
 
   // Header
   const prevClose = n > 1 ? candles[n - 2].c : last.o;
   const chg = last.c - prevClose;
   const chgPct = (chg / prevClose) * 100;
-  ctx.font = "bold 20px DejaVu Bold";
+  ctx.font = "bold 28px DejaVu Bold";
   ctx.fillStyle = "#e6e8ec";
   ctx.textAlign = "left";
   ctx.textBaseline = "alphabetic";
   const head = `${title} · ${tfLabel} · ${exchange}`;
-  ctx.fillText(head, left, 38);
-  let x = left + ctx.measureText(head).width + 16;
-  ctx.font = "15px DejaVu";
+  ctx.fillText(head, left, 46);
+  let x = left + ctx.measureText(head).width + 20;
+  ctx.font = "21px DejaVu";
   const parts = [
     ["O", fmtPrice(last.o)], ["H", fmtPrice(last.h)], ["L", fmtPrice(last.l)], ["C", fmtPrice(last.c)],
   ];
   const chgColor = chg >= 0 ? COLORS.up : COLORS.down;
   for (const [k, v] of parts) {
-    ctx.fillStyle = COLORS.dim; ctx.fillText(k, x, 38); x += ctx.measureText(k).width + 4;
-    ctx.fillStyle = chgColor; ctx.fillText(v, x, 38); x += ctx.measureText(v).width + 12;
+    ctx.fillStyle = COLORS.dim; ctx.fillText(k, x, 46); x += ctx.measureText(k).width + 5;
+    ctx.fillStyle = chgColor; ctx.fillText(v, x, 46); x += ctx.measureText(v).width + 14;
   }
   const chgText = `${chg >= 0 ? "+" : ""}${fmtPrice(chg)} (${chg >= 0 ? "+" : ""}${chgPct.toFixed(2)}%)`;
   ctx.fillStyle = chgColor;
-  ctx.fillText(chgText, x, 38);
-  ctx.font = "14px DejaVu";
+  ctx.fillText(chgText, x, 46);
+  ctx.font = "19px DejaVu";
   ctx.fillStyle = COLORS.dim;
-  ctx.fillText("Volume", left, 62);
+  ctx.fillText("Volume", left, 78);
   ctx.fillStyle = chgColor;
-  ctx.fillText(fmtVol(last.v), left + 62, 62);
+  ctx.fillText(fmtVol(last.v), left + 84, 78);
 
   return canvas.toBuffer("image/png");
 }

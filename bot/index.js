@@ -129,7 +129,7 @@ const commands = [
     .setDescription("XMR candlestick chart")
     .addStringOption((o) =>
       o.setName("timeframe")
-        .setDescription("Candle size (default: 15-minute candles, last 24 hours)")
+        .setDescription("Candle size (default: 15m, last 24 hours)")
         .addChoices(...Object.entries(TIMEFRAMES).map(([value, tf]) => ({ name: tf.label, value }))),
     ),
 ];
@@ -163,13 +163,8 @@ async function handleChart(interaction) {
   if (candles.length < 2) throw new Error("not enough candle data");
   const png = renderChart({ candles, title: PAIR_TITLE, exchange: "KRAKEN", tfLabel: spec.label, mode: spec.tick });
   const file = new AttachmentBuilder(png, { name: `xmr-${tf}.png` });
-  const last = candles.at(-1);
-  const embed = new EmbedBuilder()
-    .setColor(last.c >= last.o ? 0x26a69a : 0xef5350)
-    .setImage(`attachment://xmr-${tf}.png`)
-    .setFooter({ text: `Kraken · ${spec.label} candles` })
-    .setTimestamp();
-  await interaction.editReply({ embeds: [embed], files: [file] });
+  // Plain attachment (no embed): Discord displays it larger than an embed image.
+  await interaction.editReply({ content: `**${PAIR_TITLE}** · ${spec.caption} · Kraken`, files: [file] });
 }
 
 client.on("interactionCreate", async (interaction) => {
