@@ -27,10 +27,10 @@ Worker's cron is disabled in `wrangler.toml` by default. Details in [Hosting](#h
 2. Left menu **Bot** → **Reset Token** → copy the token. This is your `DISCORD_TOKEN`. Keep it secret.
 3. Still under **Bot**, no privileged intents are needed. Leave them off.
 4. Left menu **OAuth2** → **URL Generator**:
-   - Scopes: `bot`
+   - Scopes: `bot` and `applications.commands` (the second one enables the slash commands)
    - Bot permissions: **Change Nickname**
    - Or just use this URL with your Application ID:
-     `https://discord.com/oauth2/authorize?client_id=YOUR_APP_ID&scope=bot&permissions=67108864`
+     `https://discord.com/oauth2/authorize?client_id=YOUR_APP_ID&scope=bot%20applications.commands&permissions=67108864`
 5. Open the URL, pick your server, authorise.
 6. Under **Bot**, make sure **Public Bot** is on (it is by default). That lets anyone with the invite
    URL add the bot to their own server; you don't need to be a member or know the server ID.
@@ -110,6 +110,16 @@ Behaviour:
   and red (do not disturb) when down.
 - discord.js queues and retries automatically on Discord 429s; a `rate limited` warning in the
   log means `NICK_INTERVAL` is too low. 10 s is about the practical floor.
+
+### Slash commands
+
+- `/price` replies with an embed: current price, change vs 24 hours ago, 24h high, low and volume.
+- `/chart [timeframe]` posts a candlestick chart drawn on the VM from Kraken OHLC data. Default is
+  daily candles over the last 6 months; options are `1H` (7 days), `4H` (30 days), `1D`, `1W`
+  (3 years) and `1M` (full history, aggregated from weekly candles).
+
+Servers that added the bot before slash commands existed need to re-run the invite link once so
+the `applications.commands` scope is granted. The bot does not need to be removed first.
 
 ### Run it on a Linux VM (one command)
 

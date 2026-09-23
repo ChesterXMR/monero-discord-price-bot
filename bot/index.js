@@ -1,4 +1,8 @@
-import { Client, GatewayIntentBits, ActivityType } from "discord.js";
+import {
+  Client, GatewayIntentBits, ActivityType, EmbedBuilder, AttachmentBuilder,
+  SlashCommandBuilder, MessageFlags,
+} from "discord.js";
+import { fetchCandles, renderChart, TIMEFRAMES } from "./chart.js";
 
 const TOKEN = process.env.DISCORD_TOKEN;
 const PAIR = (process.env.PAIR || "XMRUSD").toUpperCase();
@@ -11,8 +15,12 @@ if (!TOKEN) {
 }
 
 const QUOTE_SYMBOL = { USD: "$", EUR: "€", GBP: "£", XBT: "₿", BTC: "₿", USDT: "$" };
+const QUOTE_NAME = { USD: "U.S. Dollar", EUR: "Euro", GBP: "British Pound", XBT: "Bitcoin", BTC: "Bitcoin", USDT: "Tether" };
 const quote = PAIR.replace(/^XMR/, "");
 const symbol = QUOTE_SYMBOL[quote] ?? `${quote} `;
+const PAIR_TITLE = `Monero / ${QUOTE_NAME[quote] ?? quote}`;
+const XMR_LOGO = "https://assets.coingecko.com/coins/images/69/large/monero_logo.png";
+const INVITE_SCOPES = "bot%20applications.commands";
 
 /** Fetch the Kraken ticker for PAIR. Returns { last, open, high, low, changePct }. */
 const KRAKEN = "https://api.kraken.com/0/public";
@@ -47,6 +55,7 @@ async function fetchPrice() {
     last,
     high: Number(t.h[1]),
     low: Number(t.l[1]),
+    volume: Number(t.v[1]),
     changePct: ((last - dayAgo) / dayAgo) * 100,
   };
 }
@@ -111,9 +120,80 @@ function updatePresence() {
   });
 }
 
+// ---------- Slash commands ----------
+
+const commands = [
+  new SlashCommandBuilder().setName("price").setDescription("Current XMR price with 24h change, high, low and volume"),
+  new SlashCommandBuilder()
+    .setName("chart")
+    .setDescription("XMR candlestick chart")
+    .addStringOption((o) =>
+      o.setName("timeframe")
+        .setDescription("Candle size (default: 1d)")
+        .addChoices(...Object.entries(TIMEFRAMES).map(([value, tf]) => ({ name: tf.label, value }))),
+    ),
+];
+
+function priceEmbed(p) {
+  const up = p.changePct >= 0;
+  const sign = up ? "+" : "";
+  return new EmbedBuilder()
+    .setColor(up ? 0x26a69a : 0xef5350)
+    .setAuthor({ name: PAIR_TITLE, iconURL: XMR_LOGO })
+    .setDescription(`## ${symbol}${fmt(p.last)} (${sign}${p.changePct.toFixed(2)}%)`)
+    .addFields(
+      { name: "24h High", value: `${symbol}${fmt(p.high)}`, inline: true },
+      { name: "24h Low", value: `${symbol}${fmt(p.low)}`, inline: true },
+      { name: "24h Volume", value: `${Math.round(p.volume).toLocaleString("en-US")} XMR`, inline: true },
+    )
+    .setFooter({ text: "Kraken · change vs 24h ago" })
+    .setTimestamp();
+}
+
+async function handlePrice(interaction) {
+  const p = latest ?? (await fetchPrice());
+  await interaction.reply({ embeds: [priceEmbed(p)] });
+}
+
+async function handleChart(interaction) {
+  const tf = interaction.options.getString("timeframe") ?? "1d";
+  const spec = TIMEFRAMES[tf];
+  await interaction.deferReply();
+  const candles = await fetchCandles(PAIR, tf, kraken);
+  if (candles.length < 2) throw new Error("not enough candle data");
+  const png = renderChart({ candles, title: PAIR_TITLE, exchange: "KRAKEN", tfLabel: spec.label, mode: spec.tick });
+  const file = new AttachmentBuilder(png, { name: `xmr-${tf}.png` });
+  const last = candles.at(-1);
+  const embed = new EmbedBuilder()
+    .setColor(last.c >= last.o ? 0x26a69a : 0xef5350)
+    .setImage(`attachment://xmr-${tf}.png`)
+    .setFooter({ text: `Kraken · ${spec.label} candles` })
+    .setTimestamp();
+  await interaction.editReply({ embeds: [embed], files: [file] });
+}
+
+client.on("interactionCreate", async (interaction) => {
+  if (!interaction.isChatInputCommand()) return;
+  try {
+    if (interaction.commandName === "price") await handlePrice(interaction);
+    else if (interaction.commandName === "chart") await handleChart(interaction);
+  } catch (err) {
+    console.error(`/${interaction.commandName} failed:`, err.message);
+    const msg = { content: "Couldn't fetch data from Kraken right now. Try again in a moment.", flags: MessageFlags.Ephemeral };
+    if (interaction.deferred || interaction.replied) await interaction.editReply(msg).catch(() => {});
+    else await interaction.reply(msg).catch(() => {});
+  }
+});
+
 client.once("clientReady", async () => {
   console.log(`Logged in as ${client.user.tag} in ${client.guilds.cache.size} guild(s); pair ${PAIR}`);
-  console.log(`Invite: https://discord.com/oauth2/authorize?client_id=${client.user.id}&scope=bot&permissions=67108864`);
+  console.log(`Invite: https://discord.com/oauth2/authorize?client_id=${client.user.id}&scope=${INVITE_SCOPES}&permissions=67108864`);
+  try {
+    await client.application.commands.set(commands);
+    console.log("Slash commands registered: /price, /chart");
+  } catch (err) {
+    console.error("could not register slash commands:", err.message);
+  }
   await updateNicknames();
   updatePresence();
   setInterval(updateNicknames, NICK_INTERVAL);
