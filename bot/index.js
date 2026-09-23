@@ -56,8 +56,15 @@ async function fetchPrice() {
     high: Number(t.h[1]),
     low: Number(t.l[1]),
     volume: Number(t.v[1]),
+    volumeQuote: Number(t.v[1]) * Number(t.p[1]), // 24h volume × 24h VWAP
     changePct: ((last - dayAgo) / dayAgo) * 100,
   };
+}
+
+function fmtMoney(n) {
+  if (n >= 1e6) return `${symbol}${(n / 1e6).toFixed(2)}M`;
+  if (n >= 1e3) return `${symbol}${(n / 1e3).toFixed(1)}K`;
+  return `${symbol}${fmt(n)}`;
 }
 
 function fmt(n) {
@@ -144,7 +151,7 @@ function priceEmbed(p) {
     .addFields(
       { name: "24h High", value: `${symbol}${fmt(p.high)}`, inline: true },
       { name: "24h Low", value: `${symbol}${fmt(p.low)}`, inline: true },
-      { name: "24h Volume", value: `${Math.round(p.volume).toLocaleString("en-US")} XMR`, inline: true },
+      { name: "24h Volume", value: fmtMoney(p.volumeQuote), inline: true },
     )
     .setFooter({ text: "Kraken · change vs 24h ago" })
     .setTimestamp();
