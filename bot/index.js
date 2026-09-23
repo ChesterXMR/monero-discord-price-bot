@@ -145,7 +145,7 @@ function priceEmbed(p) {
   const up = p.changePct >= 0;
   const sign = up ? "+" : "";
   return new EmbedBuilder()
-    .setColor(up ? 0x26a69a : 0xef5350)
+    .setColor(0xff6600) // Monero orange, matches the chart frame
     .setAuthor({ name: PAIR_TITLE, iconURL: XMR_LOGO })
     .setDescription(`## ${symbol}${fmt(p.last)} (${sign}${p.changePct.toFixed(2)}%)`)
     .addFields(
